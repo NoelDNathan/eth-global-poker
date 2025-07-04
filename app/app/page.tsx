@@ -3,14 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { countries, getUniversalLink } from "@selfxyz/core";
-import {
-  SelfQRcodeWrapper,
-  SelfAppBuilder,
-  type SelfApp,
-} from "@selfxyz/qrcode";
+import { SelfQRcodeWrapper, SelfAppBuilder, type SelfApp } from "@selfxyz/qrcode";
 import { v4 } from "uuid";
 import { ethers } from "ethers";
-
 
 export default function Home() {
   const router = useRouter();
@@ -21,7 +16,7 @@ export default function Home() {
   const [universalLink, setUniversalLink] = useState("");
   const [userId, setUserId] = useState(ethers.ZeroAddress);
   // Use useMemo to cache the array to avoid creating a new array on each render
-  const excludedCountries = useMemo(() => [countries.NORTH_KOREA], []);
+  const excludedCountries = useMemo(() => [], []);
 
   // Use useEffect to ensure code only executes on the client side
   useEffect(() => {
@@ -31,20 +26,18 @@ export default function Home() {
         appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || "Self Workshop",
         scope: process.env.NEXT_PUBLIC_SELF_SCOPE || "self-workshop",
         endpoint: `${process.env.NEXT_PUBLIC_SELF_ENDPOINT}`,
-        logoBase64:
-          "https://i.postimg.cc/mrmVf9hm/self.png", // url of a png image, base64 is accepted but not recommended
+        logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png", // url of a png image, base64 is accepted but not recommended
         userId: userId,
-        endpointType: "staging_https",
+        endpointType: "staging_celo",
         userIdType: "hex", // use 'hex' for ethereum address or 'uuid' for uuidv4
         userDefinedData: "Bonjour Cannes!",
         disclosures: {
-
-        // // what you want to verify from users' identity
+          // // what you want to verify from users' identity
           minimumAge: 18,
           // ofac: false,
           // excludedCountries: [countries.BELGIUM],
 
-        // //what you want users to reveal
+          // //what you want users to reveal
           // name: false,
           // issuing_state: true,
           nationality: true,
@@ -52,7 +45,7 @@ export default function Home() {
           // passport_number: false,
           gender: true,
           // expiry_date: false,
-        }
+        },
       }).build();
 
       setSelfApp(app);
@@ -146,8 +139,6 @@ export default function Home() {
           >
             Open Self App
           </button>
-
-
         </div>
         <div className="flex flex-col items-center gap-2 mt-2">
           <span className="text-gray-500 text-xs uppercase tracking-wide">User Address</span>

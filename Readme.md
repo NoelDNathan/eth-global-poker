@@ -1,0 +1,2 @@
+- Ejecutar scope
+- La configuración tiene que ser igual en el frontend como en el backend
