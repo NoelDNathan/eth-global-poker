@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SelfVerificationRoot} from "@selfxyz/contracts/contracts/abstract/SelfVerificationRoot.sol";
 import {ISelfVerificationRoot} from "@selfxyz/contracts/contracts/interfaces/ISelfVerificationRoot.sol";
 import {SelfStructs} from "@selfxyz/contracts/contracts/libraries/SelfStructs.sol";
+import {BokkyPooBahsDateTimeLibrary} from "./lib/contracts/BokkyPooBahsDateTimeLibrary.sol";
 
 /**
  * @title TestSelfVerificationRoot
@@ -19,11 +20,25 @@ contract ProofOfHuman is SelfVerificationRoot {
     bytes32 public verificationConfigId;
     address public lastUserAddress;
 
+    /// @notice Reverts when a user identifier is invalid
+    error InvalidUserIdentifier();
+
+    /// @notice Reverts when a document is expired
+    error DocumentExpired();
+
+    /// @notice Reverts when a user identifier has already been registered
+    error UserIdentifierAlreadyRegistered();
+
+    /// @notice Reverts when a nullifier has already been registered
+    error RegisteredNullifier();
+
     // Events for testing
     event VerificationCompleted(
         ISelfVerificationRoot.GenericDiscloseOutputV2 output,
         bytes userData
     );
+
+    event ExpiryDateEmit(string expiryDate);
 
     /**
      * @notice Constructor for the test contract
@@ -36,6 +51,18 @@ contract ProofOfHuman is SelfVerificationRoot {
     ) SelfVerificationRoot(identityVerificationHubV2Address, scope) {
         verificationConfigId = _verificationConfigId;
     }
+
+    mapping(uint256 nullifier => uint256 userIdentifier)
+        internal _nullifierToUserIdentifier;
+
+    /// @notice Maps user identifiers to registration status
+    mapping(uint256 userIdentifier => bool registered)
+        internal _registeredUserIdentifiers;
+
+    function isRegistered(uint256 userIdentifier) public view returns (bool) {
+        return _registeredUserIdentifiers[userIdentifier];
+    }
+
     /**
      * @notice Implementation of customVerificationHook for testing
      * @dev This function is called by onVerificationSuccess after hub address validation
@@ -51,7 +78,32 @@ contract ProofOfHuman is SelfVerificationRoot {
         lastUserData = userData;
         lastUserAddress = address(uint160(output.userIdentifier));
 
+        if (_nullifierToUserIdentifier[output.nullifier] != 0) {
+            revert RegisteredNullifier();
+        }
+
+        // if (output.userIdentifier == 0) {
+        //     revert InvalidUserIdentifier();
+        // }
+        if (isRegistered(output.userIdentifier)) {
+            revert UserIdentifierAlreadyRegistered();
+        }
         emit VerificationCompleted(output, userData);
+
+        require(bytes(output.idNumber).length > 0, "ID number required");
+
+        require(bytes(output.expiryDate).length > 0, "Expiry date required");
+
+        require(output.ofac[0] == true, "OFAC required");
+        require(output.ofac[1] == true, "OFAC required");
+        require(output.ofac[2] == true, "OFAC required");
+
+        emit ExpiryDateEmit(output.expiryDate);
+        // Verify that the document is not expired
+        require(!isExpired(output.expiryDate), "Document is expired");
+
+        _nullifierToUserIdentifier[output.nullifier] = output.userIdentifier;
+        _registeredUserIdentifiers[output.userIdentifier] = true;
     }
 
     /**
@@ -128,5 +180,74 @@ contract ProofOfHuman is SelfVerificationRoot {
     ) external {
         // This should fail if called by anyone other than the hub
         onVerificationSuccess(output, userData);
+    }
+
+    /**
+     * @notice Check if a document is expired based on its expiry date
+     * @param expiryDateString The expiry date in format "DD-MM-YY"
+     * @return True if the document is expired, false otherwise
+     */
+    function isExpired(string memory expiryDateString) public returns (bool) {
+        // Convert string to bytes for parsing
+        bytes memory expiryBytes = bytes(expiryDateString);
+
+        emit ExpiryDateEmit(expiryDateString);
+
+        // Validate the date format for DD-MM-YY
+        require(
+            expiryBytes.length == 8,
+            "Invalid date format. Expected DD-MM-YY"
+        );
+        require(
+            expiryBytes[2] == "-" && expiryBytes[5] == "-",
+            "Invalid date format. Expected DD-MM-YY"
+        );
+
+        // Extract day, month, and year (assuming 20xx for years)
+        uint256 day = _parseUint(expiryBytes, 0, 2);
+        uint256 month = _parseUint(expiryBytes, 3, 5);
+        uint256 year = _parseUint(expiryBytes, 6, 8) + 2000; // Add 2000 to convert YY to YYYY
+
+        // Validate the date
+        require(
+            BokkyPooBahsDateTimeLibrary.isValidDate(year, month, day),
+            "Invalid date"
+        );
+
+        // Convert expiry date to timestamp
+        uint256 expiryTimestamp = BokkyPooBahsDateTimeLibrary.timestampFromDate(
+            year,
+            month,
+            day
+        );
+
+        // Add one day to expiry date to include the full day
+        expiryTimestamp = BokkyPooBahsDateTimeLibrary.addDays(
+            expiryTimestamp,
+            1
+        );
+
+        // Compare with current timestamp
+        return block.timestamp >= expiryTimestamp;
+    }
+
+    /**
+     * @notice Parse a substring of bytes to uint256
+     * @param data The byte array to parse
+     * @param start The starting index (inclusive)
+     * @param end The ending index (exclusive)
+     * @return The parsed uint256 value
+     */
+    function _parseUint(
+        bytes memory data,
+        uint256 start,
+        uint256 end
+    ) internal pure returns (uint256) {
+        uint256 result = 0;
+        for (uint256 i = start; i < end; i++) {
+            require(data[i] >= 0x30 && data[i] <= 0x39, "Invalid digit");
+            result = result * 10 + (uint256(uint8(data[i])) - 0x30);
+        }
+        return result;
     }
 }

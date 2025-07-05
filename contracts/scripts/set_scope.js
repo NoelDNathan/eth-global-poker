@@ -18,7 +18,7 @@ async function main() {
     console.log("Network:", hre.network.name);
 
     // Get the new scope value from environment variable
-    const newScope = "14258396667632145147273950363188932142609643261016760333380805302191013188462";
+    const newScope = "20710046386020088218950855905172105610512956644038465004723826740210973646092";
 
     if (!newScope) {
         console.error("Please provide the new scope value:");

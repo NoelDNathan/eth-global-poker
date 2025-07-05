@@ -32,19 +32,21 @@ export default function Home() {
         userIdType: "hex", // use 'hex' for ethereum address or 'uuid' for uuidv4
         userDefinedData: "Bonjour Cannes!",
         disclosures: {
-          // // what you want to verify from users' identity
           minimumAge: 18,
-          // ofac: false,
-          // excludedCountries: [countries.BELGIUM],
+          ofac: true,
+          excludedCountries: [countries.UNITED_STATES, 
+                              countries.TURKEY, 
+                              countries.CHINA, 
+                              countries.NORTH_KOREA, 
+                              countries.SOUTH_KOREA,  
+                              countries.JAPAN, 
+                              countries.PAKISTAN,
+                              countries.EGYPT],
 
-          // //what you want users to reveal
-          // name: false,
-          // issuing_state: true,
-          nationality: true,
-          // date_of_birth: true,
-          // passport_number: false,
-          gender: true,
-          // expiry_date: false,
+          nationality: false,
+          date_of_birth: true,
+          passport_number: true,
+          expiry_date: true,
         },
       }).build();
 
