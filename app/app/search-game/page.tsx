@@ -25,19 +25,17 @@ export default function GamePage() {
     setWalletAddress(storedWalletAddress);
   }, [router]);
 
-  const displayToast = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
-
   const handleBackToVerified = () => {
     router.push("/verified");
   };
 
   const handleJoinTable = () => {
-    displayToast("Looking for available tables...");
-    // Here you would implement table joining logic
+    setToastMessage("Connecting to a table...");
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+      router.push("/game2");
+    }, 3500); // 3.5 seconds
   };
 
   const formatAddress = (address: string) => {
