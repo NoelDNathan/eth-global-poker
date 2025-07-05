@@ -6,12 +6,14 @@ import {ISelfVerificationRoot} from "@selfxyz/contracts/contracts/interfaces/ISe
 import {SelfStructs} from "@selfxyz/contracts/contracts/libraries/SelfStructs.sol";
 import {BokkyPooBahsDateTimeLibrary} from "./lib/contracts/BokkyPooBahsDateTimeLibrary.sol";
 
+import {IProofOfHuman} from "@thirdweb-dev/contracts/prebuilts/account/utils/IProofOfHuman.sol";
+
 /**
  * @title TestSelfVerificationRoot
  * @notice Test implementation of SelfVerificationRoot for testing purposes
  * @dev This contract provides a concrete implementation of the abstract SelfVerificationRoot
  */
-contract ProofOfHuman is SelfVerificationRoot {
+contract ProofOfHuman is SelfVerificationRoot, IProofOfHuman {
     // Storage for testing purposes
     bool public verificationSuccessful;
     ISelfVerificationRoot.GenericDiscloseOutputV2 public lastOutput;
@@ -38,6 +40,17 @@ contract ProofOfHuman is SelfVerificationRoot {
         bytes userData
     );
 
+    mapping(uint256 nullifier => uint256 userIdentifier)
+        internal _nullifierToUserIdentifier;
+
+    /// @notice Maps user identifiers to registration status
+    mapping(uint256 userIdentifier => bool registered)
+        internal _registeredUserIdentifiers;
+
+    mapping(address account => bytes32 passportHash) public accountToPassportHash;
+
+    mapping(address account => string birthday) public accountToBirthday;
+
     event ExpiryDateEmit(string expiryDate);
 
     /**
@@ -51,13 +64,6 @@ contract ProofOfHuman is SelfVerificationRoot {
     ) SelfVerificationRoot(identityVerificationHubV2Address, scope) {
         verificationConfigId = _verificationConfigId;
     }
-
-    mapping(uint256 nullifier => uint256 userIdentifier)
-        internal _nullifierToUserIdentifier;
-
-    /// @notice Maps user identifiers to registration status
-    mapping(uint256 userIdentifier => bool registered)
-        internal _registeredUserIdentifiers;
 
     function isRegistered(uint256 userIdentifier) public view returns (bool) {
         return _registeredUserIdentifiers[userIdentifier];
@@ -78,16 +84,10 @@ contract ProofOfHuman is SelfVerificationRoot {
         lastUserData = userData;
         lastUserAddress = address(uint160(output.userIdentifier));
 
-        if (_nullifierToUserIdentifier[output.nullifier] != 0) {
-            revert RegisteredNullifier();
-        }
+        require(output.userIdentifier != 0, "User identifier required");
 
-        // if (output.userIdentifier == 0) {
-        //     revert InvalidUserIdentifier();
-        // }
-        if (isRegistered(output.userIdentifier)) {
-            revert UserIdentifierAlreadyRegistered();
-        }
+        // require(!isRegistered(output.userIdentifier), "User identifier already registered");
+
         emit VerificationCompleted(output, userData);
 
         require(bytes(output.idNumber).length > 0, "ID number required");
@@ -103,7 +103,66 @@ contract ProofOfHuman is SelfVerificationRoot {
         require(!isExpired(output.expiryDate), "Document is expired");
 
         _nullifierToUserIdentifier[output.nullifier] = output.userIdentifier;
-        _registeredUserIdentifiers[output.userIdentifier] = true;
+        // _registeredUserIdentifiers[output.userIdentifier] = true;
+
+        bytes32 passportHash = keccak256(abi.encodePacked(
+            output.idNumber,
+            output.nationality
+        ));
+        accountToPassportHash[lastUserAddress] = passportHash;
+
+        accountToBirthday[lastUserAddress] = output.dateOfBirth;
+    }
+
+    function getPassportHash(
+        address account
+    ) public view returns (bytes32) {
+        return accountToPassportHash[account];
+    }
+
+    function isAccountBirthday(address account) public view returns (bool) {
+        // Retrieve the stored birthday for the account
+        string memory birthdayString = accountToBirthday[account];
+        bytes memory birthdayBytes = bytes(birthdayString);
+
+        // Validate the date format for DD-MM-YY
+        require(
+            birthdayBytes.length == 8,
+            "Invalid date format. Expected DD-MM-YY"
+        );
+        require(
+            birthdayBytes[2] == "-" && birthdayBytes[5] == "-",
+            "Invalid date format. Expected DD-MM-YY"
+        );
+
+        // Extract day and month from the birthday
+        uint256 birthDay = _parseUint(birthdayBytes, 0, 2);
+        uint256 birthMonth = _parseUint(birthdayBytes, 3, 5);
+
+        // Get the current day, month, and year
+        (
+            uint256 currentYear,
+            uint256 currentMonth,
+            uint256 currentDay
+        ) = BokkyPooBahsDateTimeLibrary.timestampToDate(block.timestamp);
+
+        // Calculate the birthday timestamp for the current year
+        uint256 birthdayTimestamp = BokkyPooBahsDateTimeLibrary
+            .timestampFromDate(currentYear, birthMonth, birthDay);
+
+        // Calculate the day before and day after timestamps
+        uint256 dayBeforeTimestamp = BokkyPooBahsDateTimeLibrary.addDays(
+            birthdayTimestamp,
+            uint256(1) - uint256(2)
+        );
+        uint256 dayAfterTimestamp = BokkyPooBahsDateTimeLibrary.addDays(
+            birthdayTimestamp,
+            uint256(1)
+        );
+
+        // Check if today is within the range of the birthday
+        return (block.timestamp >= dayBeforeTimestamp &&
+            block.timestamp <= dayAfterTimestamp);
     }
 
     /**
