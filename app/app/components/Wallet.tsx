@@ -9,14 +9,13 @@ const opbnb = defineChain(5611);
 
 const CHAIN = opbnb;
 const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID!;
-const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS!;
-const THIRDWEB_SECRET_KEY = process.env.NEXT_PUBLIC_THIRDWEB_SECRET_KEY!;
 
-console.log(THIRDWEB_SECRET_KEY);
 console.log(CLIENT_ID);
+const clientId = "f910c86afed579998a613fe27da700d8";
+const FACTORY_ADDRESS = "0x86f31e10350D364B00bB3F85F0f9a49aa69151C3";
+
 const client = createThirdwebClient({
-    clientId: CLIENT_ID,
-    secretKey: THIRDWEB_SECRET_KEY,
+    clientId: clientId,
 });
 
 
