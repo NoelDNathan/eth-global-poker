@@ -7,6 +7,8 @@ import { SelfQRcodeWrapper, SelfAppBuilder, type SelfApp } from "@selfxyz/qrcode
 import { v4 } from "uuid";
 import { ethers } from "ethers";
 
+import { SmartWallet } from "./components/Wallet";
+
 export default function Home() {
   const router = useRouter();
   const [linkCopied, setLinkCopied] = useState(false);
@@ -34,14 +36,16 @@ export default function Home() {
         disclosures: {
           minimumAge: 18,
           ofac: true,
-          excludedCountries: [countries.UNITED_STATES, 
-                              countries.TURKEY, 
-                              countries.CHINA, 
-                              countries.NORTH_KOREA, 
-                              countries.SOUTH_KOREA,  
-                              countries.JAPAN, 
-                              countries.PAKISTAN,
-                              countries.EGYPT],
+          excludedCountries: [
+            countries.UNITED_STATES,
+            countries.TURKEY,
+            countries.CHINA,
+            countries.NORTH_KOREA,
+            countries.SOUTH_KOREA,
+            countries.JAPAN,
+            countries.PAKISTAN,
+            countries.EGYPT,
+          ],
 
           nationality: false,
           date_of_birth: true,
@@ -55,7 +59,7 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to initialize Self app:", error);
     }
-  }, []);
+  }, [userId]);
 
   const displayToast = (message: string) => {
     setToastMessage(message);
@@ -93,8 +97,20 @@ export default function Home() {
     }, 1500);
   };
 
+  const handleWalletConnect = (wallet: { address?: string }) => {
+    if (wallet && wallet.address) {
+      setUserId(wallet.address);
+      displayToast("Wallet connected successfully!");
+    }
+  };
+
   return (
-    <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative">
+      {/* SmartWallet in top right */}
+      <div className="absolute top-4 right-4 z-10">
+        <SmartWallet onConnect={handleWalletConnect} />
+      </div>
+
       {/* Header */}
       <div className="mb-6 md:mb-8 text-center">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-800">
