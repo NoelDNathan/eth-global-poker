@@ -34,8 +34,8 @@ export default function GamePage() {
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
-      router.push("/game2");
-    }, 3500); // 3.5 seconds
+      router.push("/menu");
+    }, 500); // 3.5 seconds
   };
 
   const formatAddress = (address: string) => {

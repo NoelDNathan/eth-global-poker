@@ -430,4 +430,113 @@ describe("Poker Contract", function () {
       );
     });
   });
+
+  describe("Advanced Poker Contract Tests", function () {
+    it("Should allow a 4-player game with correct round progression and winner", async function () {
+      const buyIn = ethers.utils.parseEther("1");
+      await poker.connect(player1).joinRoom({ value: buyIn });
+      await poker.connect(player2).joinRoom({ value: buyIn });
+      await poker.connect(player3).joinRoom({ value: buyIn });
+      await poker.connect(player4).joinRoom({ value: buyIn });
+      await poker.startGame();
+      // All players call in turn for each round
+      for (let round = 0; round < 4; round++) {
+        for (let i = 0; i < 4; i++) {
+          const current = [player1, player2, player3, player4][i];
+          await poker.connect(current).call();
+        }
+        const gameState = await poker.getGameState();
+        expect(gameState.currentRound).to.equal(round < 3 ? round + 1 : 4);
+      }
+      // Game should be finished
+      const gameState = await poker.getGameState();
+      expect(gameState.gameActive).to.equal(false);
+      expect(gameState.pot).to.equal(0);
+    });
+
+    it("Should allow a 6-player game and handle multiple folds", async function () {
+      const buyIn = ethers.utils.parseEther("1");
+      await poker.connect(player1).joinRoom({ value: buyIn });
+      await poker.connect(player2).joinRoom({ value: buyIn });
+      await poker.connect(player3).joinRoom({ value: buyIn });
+      await poker.connect(player4).joinRoom({ value: buyIn });
+      await poker.connect(player5).joinRoom({ value: buyIn });
+      await poker.connect(player6).joinRoom({ value: buyIn });
+      await poker.startGame();
+      // 4 players fold, 2 remain
+      await poker.connect(player1).fold();
+      await poker.connect(player2).fold();
+      await poker.connect(player3).fold();
+      await poker.connect(player4).fold();
+      // Remaining players call
+      await poker.connect(player5).call();
+      await poker.connect(player6).call();
+      // Game should continue with 2 players
+      const gameState = await poker.getGameState();
+      expect(gameState.numPlayersInGame).to.equal(2);
+    });
+
+    it("Should emit all relevant events during a full game", async function () {
+      const buyIn = ethers.utils.parseEther("1");
+      await expect(poker.connect(player1).joinRoom({ value: buyIn })).to.emit(
+        poker,
+        "PlayerJoined"
+      );
+      await expect(poker.connect(player2).joinRoom({ value: buyIn })).to.emit(
+        poker,
+        "PlayerJoined"
+      );
+      await expect(poker.startGame()).to.emit(poker, "GameStarted");
+      await expect(poker.connect(player1).call()).to.emit(poker, "PlayerBet");
+      await expect(poker.connect(player2).raise(ethers.utils.parseEther("0.2"))).to.emit(
+        poker,
+        "PlayerBet"
+      );
+      await expect(poker.connect(player1).fold()).to.emit(poker, "PlayerFolded");
+    });
+
+    it("Should allow join with exact MINBUYIN and MAXBUYIN", async function () {
+      const minBuyIn = await poker.MINBUYIN();
+      const maxBuyIn = await poker.MAXBUYIN();
+      await expect(poker.connect(player1).joinRoom({ value: minBuyIn })).to.emit(
+        poker,
+        "PlayerJoined"
+      );
+      await expect(poker.connect(player2).joinRoom({ value: maxBuyIn })).to.emit(
+        poker,
+        "PlayerJoined"
+      );
+    });
+
+    it("Should revert if not in room or not in game for restricted actions", async function () {
+      await expect(poker.connect(player1).call()).to.be.revertedWith("Player not in game");
+      const buyIn = ethers.utils.parseEther("1");
+      await poker.connect(player1).joinRoom({ value: buyIn });
+      await poker.connect(player2).joinRoom({ value: buyIn });
+      await poker.startGame();
+      await poker.connect(player1).fold();
+      await expect(poker.connect(player1).call()).to.be.revertedWith("Player not in game");
+    });
+
+    it("Should reset all state after multiple games", async function () {
+      const buyIn = ethers.utils.parseEther("1");
+      await poker.connect(player1).joinRoom({ value: buyIn });
+      await poker.connect(player2).joinRoom({ value: buyIn });
+      for (let i = 0; i < 3; i++) {
+        await poker.startGame();
+        await poker.connect(player1).call();
+        await poker.connect(player2).call();
+        await poker.connect(player1).call();
+        await poker.connect(player2).call();
+        await poker.connect(player1).call();
+        await poker.connect(player2).call();
+        await poker.connect(player1).call();
+        await poker.connect(player2).call();
+        const gameState = await poker.getGameState();
+        expect(gameState.gameActive).to.equal(false);
+        expect(gameState.currentRound).to.equal(4);
+        // Players should be able to start a new game
+      }
+    });
+  });
 });

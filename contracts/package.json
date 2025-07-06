@@ -8,7 +8,8 @@
     "deploy:proof:hum": "hardhat run scripts/deploy-proof-human.js --network alfajores",
     "deploy:account:factory": "hardhat run scripts/deploy-account-factory.js --network alfajores",
     "set:scope": "hardhat run scripts/set_scope.js --network alfajores",
-    "deploy:poker": "hardhat run scripts/deploy-poker.js --network alfajores"
+    "deploy:poker": "hardhat run scripts/deploy-poker.js --network alfajores",
+    "deploy:rewards": "hardhat run scripts/deploy-rewards.js --network alfajores"
   },
   "keywords": [],
   "author": "",
