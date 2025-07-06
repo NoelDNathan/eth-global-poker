@@ -19,7 +19,7 @@ describe("Poker Contract", function () {
 
     Poker = await ethers.getContractFactory("Poker");
     poker = await Poker.deploy();
-    await poker.deployed();
+    await poker.waitForDeployment();
   });
 
   describe("Deployment", function () {
@@ -45,7 +45,7 @@ describe("Poker Contract", function () {
 
   describe("Room Management", function () {
     it("Should allow players to join room with valid buy-in", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
 
       await expect(poker.connect(player1).joinRoom({ value: buyIn }))
         .to.emit(poker, "PlayerJoined")
@@ -55,12 +55,12 @@ describe("Poker Contract", function () {
       expect(playerInfo.inRoom).to.equal(true);
       expect(playerInfo.chair).to.equal(5);
 
-      const balance = await poker.playerBalance(player1.address);
+      const balance = await poker.provider.getBalance(player1.address);
       expect(balance).to.equal(buyIn);
     });
 
     it("Should reject join with insufficient buy-in", async function () {
-      const lowBuyIn = ethers.utils.parseEther("0.5"); // 500 wei
+      const lowBuyIn = ethers.parseUnits("500", 0); // 500 wei
 
       await expect(poker.connect(player1).joinRoom({ value: lowBuyIn })).to.be.revertedWith(
         "Invalid buy-in amount"
@@ -68,7 +68,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should reject join with excessive buy-in", async function () {
-      const highBuyIn = ethers.utils.parseEther("15"); // 15000 wei
+      const highBuyIn = ethers.parseUnits("15000", 0); // 15000 wei
 
       await expect(poker.connect(player1).joinRoom({ value: highBuyIn })).to.be.revertedWith(
         "Invalid buy-in amount"
@@ -76,7 +76,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should reject duplicate join", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
 
       await poker.connect(player1).joinRoom({ value: buyIn });
 
@@ -86,7 +86,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should reject join when room is full", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
 
       // Fill the room
       await poker.connect(player1).joinRoom({ value: buyIn });
@@ -103,14 +103,14 @@ describe("Poker Contract", function () {
     });
 
     it("Should allow players to leave room and withdraw balance", async function () {
-      const buyIn = ethers.utils.parseEther("1");
-      const initialBalance = await player1.getBalance();
+      const buyIn = ethers.parseUnits("1000", 0);
+      const initialBalance = await poker.provider.getBalance(player1.address);
 
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player1).leaveRoom();
 
-      const finalBalance = await player1.getBalance();
-      expect(finalBalance).to.be.closeTo(initialBalance, ethers.utils.parseEther("0.01")); // Account for gas
+      const finalBalance = await poker.provider.getBalance(player1.address);
+      expect(finalBalance).to.be.closeTo(initialBalance, ethers.parseUnits("10", 0)); // Account for gas
 
       const playerInfo = await poker.getPlayerInfo(player1.address);
       expect(playerInfo.inRoom).to.equal(false);
@@ -121,7 +121,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should reject leave during active game", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
 
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
@@ -134,7 +134,7 @@ describe("Poker Contract", function () {
 
   describe("Game Management", function () {
     beforeEach(async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
     });
@@ -195,7 +195,7 @@ describe("Poker Contract", function () {
 
   describe("Betting Actions", function () {
     beforeEach(async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
@@ -207,13 +207,13 @@ describe("Poker Contract", function () {
     });
 
     it("Should allow player to raise", async function () {
-      const raiseAmount = ethers.utils.parseEther("0.1");
+      const raiseAmount = ethers.parseUnits("200", 0);
 
       await expect(poker.connect(player1).raise(raiseAmount)).to.emit(poker, "PlayerBet");
     });
 
     it("Should reject raise below current bet", async function () {
-      const lowRaise = ethers.utils.parseEther("0.01");
+      const lowRaise = ethers.parseUnits("10", 0);
 
       await expect(poker.connect(player1).raise(lowRaise)).to.be.revertedWith(
         "Raise must be higher than current bet"
@@ -249,7 +249,7 @@ describe("Poker Contract", function () {
 
   describe("Round Progression", function () {
     beforeEach(async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
@@ -300,7 +300,7 @@ describe("Poker Contract", function () {
 
   describe("Game End and Winner Determination", function () {
     beforeEach(async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
@@ -333,20 +333,20 @@ describe("Poker Contract", function () {
 
   describe("Edge Cases and Error Handling", function () {
     it("Should handle insufficient balance for actions", async function () {
-      const buyIn = ethers.utils.parseEther("0.1"); // Small buy-in
+      const buyIn = ethers.parseUnits("100", 0); // Small buy-in
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
 
       // Try to raise more than balance
-      const largeRaise = ethers.utils.parseEther("0.2");
+      const largeRaise = ethers.parseUnits("200", 0);
       await expect(poker.connect(player1).raise(largeRaise)).to.be.revertedWith(
         "Insufficient balance"
       );
     });
 
     it("Should handle all players going all-in", async function () {
-      const buyIn = ethers.utils.parseEther("0.1");
+      const buyIn = ethers.parseUnits("100", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
@@ -361,7 +361,7 @@ describe("Poker Contract", function () {
 
   describe("View Functions", function () {
     it("Should return correct player information", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
 
       const playerInfo = await poker.getPlayerInfo(player1.address);
@@ -377,7 +377,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should return correct players in room", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
 
@@ -396,7 +396,7 @@ describe("Poker Contract", function () {
 
   describe("Emergency Functions", function () {
     it("Should allow owner to pause game", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
@@ -414,12 +414,12 @@ describe("Poker Contract", function () {
     });
 
     it("Should allow owner to emergency withdraw", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
 
-      const initialBalance = await owner.getBalance();
+      const initialBalance = await poker.provider.getBalance(owner.address);
       await poker.emergencyWithdraw();
-      const finalBalance = await owner.getBalance();
+      const finalBalance = await poker.provider.getBalance(owner.address);
 
       expect(finalBalance).to.be.gt(initialBalance);
     });
@@ -433,7 +433,7 @@ describe("Poker Contract", function () {
 
   describe("Advanced Poker Contract Tests", function () {
     it("Should allow a 4-player game with correct round progression and winner", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.connect(player3).joinRoom({ value: buyIn });
@@ -455,7 +455,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should allow a 6-player game and handle multiple folds", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.connect(player3).joinRoom({ value: buyIn });
@@ -477,7 +477,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should emit all relevant events during a full game", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await expect(poker.connect(player1).joinRoom({ value: buyIn })).to.emit(
         poker,
         "PlayerJoined"
@@ -488,7 +488,7 @@ describe("Poker Contract", function () {
       );
       await expect(poker.startGame()).to.emit(poker, "GameStarted");
       await expect(poker.connect(player1).call()).to.emit(poker, "PlayerBet");
-      await expect(poker.connect(player2).raise(ethers.utils.parseEther("0.2"))).to.emit(
+      await expect(poker.connect(player2).raise(ethers.parseUnits("200", 0))).to.emit(
         poker,
         "PlayerBet"
       );
@@ -510,7 +510,7 @@ describe("Poker Contract", function () {
 
     it("Should revert if not in room or not in game for restricted actions", async function () {
       await expect(poker.connect(player1).call()).to.be.revertedWith("Player not in game");
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       await poker.startGame();
@@ -519,7 +519,7 @@ describe("Poker Contract", function () {
     });
 
     it("Should reset all state after multiple games", async function () {
-      const buyIn = ethers.utils.parseEther("1");
+      const buyIn = ethers.parseUnits("1000", 0);
       await poker.connect(player1).joinRoom({ value: buyIn });
       await poker.connect(player2).joinRoom({ value: buyIn });
       for (let i = 0; i < 3; i++) {

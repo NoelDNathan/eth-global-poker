@@ -47,7 +47,8 @@ contract ProofOfHuman is SelfVerificationRoot, IProofOfHuman {
     mapping(uint256 userIdentifier => bool registered)
         internal _registeredUserIdentifiers;
 
-    mapping(address account => bytes32 passportHash) public accountToPassportHash;
+    mapping(address account => bytes32 passportHash)
+        public accountToPassportHash;
 
     mapping(address account => string birthday) public accountToBirthday;
 
@@ -65,7 +66,12 @@ contract ProofOfHuman is SelfVerificationRoot, IProofOfHuman {
         verificationConfigId = _verificationConfigId;
     }
 
-    function isRegistered(uint256 userIdentifier) public view returns (bool) {
+    function isRegistered(uint256 userIdentifier) external view returns (bool) {
+        return _registeredUserIdentifiers[userIdentifier];
+    }
+
+    function isAddressRegistered(address account) external view returns (bool) {
+        uint256 userIdentifier = uint256(uint160(account));
         return _registeredUserIdentifiers[userIdentifier];
     }
 
@@ -103,20 +109,17 @@ contract ProofOfHuman is SelfVerificationRoot, IProofOfHuman {
         require(!isExpired(output.expiryDate), "Document is expired");
 
         _nullifierToUserIdentifier[output.nullifier] = output.userIdentifier;
-        // _registeredUserIdentifiers[output.userIdentifier] = true;
+        _registeredUserIdentifiers[output.userIdentifier] = true;
 
-        bytes32 passportHash = keccak256(abi.encodePacked(
-            output.idNumber,
-            output.nationality
-        ));
+        bytes32 passportHash = keccak256(
+            abi.encodePacked(output.idNumber, output.nationality)
+        );
         accountToPassportHash[lastUserAddress] = passportHash;
 
         accountToBirthday[lastUserAddress] = output.dateOfBirth;
     }
 
-    function getPassportHash(
-        address account
-    ) public view returns (bytes32) {
+    function getPassportHash(address account) public view returns (bytes32) {
         return accountToPassportHash[account];
     }
 
@@ -126,14 +129,14 @@ contract ProofOfHuman is SelfVerificationRoot, IProofOfHuman {
         bytes memory birthdayBytes = bytes(birthdayString);
 
         // Validate the date format for DD-MM-YY
-        require(
-            birthdayBytes.length == 8,
-            "Invalid date format. Expected DD-MM-YY"
-        );
-        require(
-            birthdayBytes[2] == "-" && birthdayBytes[5] == "-",
-            "Invalid date format. Expected DD-MM-YY"
-        );
+        // require(
+        //     birthdayBytes.length == 8,
+        //     "Invalid date format. Expected DD-MM-YY"
+        // );
+        // require(
+        //     birthdayBytes[2] == "-" && birthdayBytes[5] == "-",
+        //     "Invalid date format. Expected DD-MM-YY"
+        // );
 
         // Extract day and month from the birthday
         uint256 birthDay = _parseUint(birthdayBytes, 0, 2);

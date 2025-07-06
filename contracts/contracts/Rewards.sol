@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 // Minimal interface for ProofOfHuman
 interface IProofOfHuman {
     function isAccountBirthday(address account) external view returns (bool);
+
+    function isAddressRegistered(address userIdentifier) external view returns (bool);
 }
 
 /**
@@ -45,10 +47,16 @@ contract Rewards {
         return year;
     }
 
+    function isAddressRegistered(address account) external view returns (bool) {
+        return proofOfHuman.isAddressRegistered(account);
+    }
+
     /**
      * @notice Returns true if the user has claimed their birthday reward this year
      */
-    function hasClaimedBirthdayReward(address user) external view returns (bool) {
+    function hasClaimedBirthdayReward(
+        address user
+    ) external view returns (bool) {
         uint256 year = _getCurrentYear();
         return lastBirthdayClaimedYear[user] == year;
     }
@@ -63,14 +71,24 @@ contract Rewards {
     /**
      * @notice Returns true if the user has claimed the straight reward
      */
-    function hasClaimedStraightReward(address user) external view returns (bool) {
+    function hasClaimedStraightReward(
+        address user
+    ) external view returns (bool) {
         return straightRewardClaimed[user];
+    }
+
+    function isYourBirthday(address user) external view returns (bool) {
+        return proofOfHuman.isAccountBirthday(user);
     }
 
     /**
      * @notice Claim a reward if today is the user's birthday and not already claimed this year
      */
     function claimBirthdayReward() external {
+        require(
+            proofOfHuman.isAddressRegistered(msg.sender),
+            "User not registered"
+        );
         require(
             proofOfHuman.isAccountBirthday(msg.sender),
             "Not your birthday"
@@ -89,6 +107,10 @@ contract Rewards {
      * @notice Claim a reward for winning a poker game (simulated)
      */
     function claimWinReward() external {
+        require(
+            proofOfHuman.isAddressRegistered(msg.sender),
+            "User not registered"
+        );
         require(!winRewardClaimed[msg.sender], "Win reward already claimed");
         winRewardClaimed[msg.sender] = true;
         emit WinRewardClaimed(msg.sender);
@@ -99,6 +121,10 @@ contract Rewards {
      * @notice Claim a reward for winning with a straight (simulated)
      */
     function claimStraightReward() external {
+        require(
+            proofOfHuman.isAddressRegistered(msg.sender),
+            "User not registered"
+        );
         require(
             !straightRewardClaimed[msg.sender],
             "Straight reward already claimed"

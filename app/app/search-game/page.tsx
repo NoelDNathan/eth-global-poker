@@ -29,13 +29,15 @@ export default function GamePage() {
     router.push("/verified");
   };
 
+  const handleGoToMenu = () => {
+    router.push("/menu");
+  };
+
   const handleJoinTable = () => {
     setToastMessage("Connecting to a table...");
     setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-      router.push("/menu");
-    }, 500); // 3.5 seconds
+    setShowToast(false);
+    router.push("/game3");
   };
 
   const formatAddress = (address: string) => {
@@ -59,6 +61,20 @@ export default function GamePage() {
             strokeLinejoin="round"
             strokeWidth={2}
             d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
+        </svg>
+      </button>
+      {/* Menu button */}
+      <button
+        onClick={handleGoToMenu}
+        className="absolute top-4 left-16 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 transition-colors"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16" // Hamburger menu icon
           />
         </svg>
       </button>
@@ -163,7 +179,7 @@ export default function GamePage() {
               <h4 className="font-medium text-gray-700 mb-2">Basic Rules:</h4>
               <ul className="text-sm text-gray-600 space-y-1">
                 <li>• Standard 52-card deck</li>
-                <li>• Texas Hold'em rules</li>
+                <li>• Texas Hold&apos;em rules</li>
                 <li>• Minimum 2 players</li>
                 <li>• Maximum 8 players per table</li>
               </ul>
